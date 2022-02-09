@@ -62,34 +62,38 @@ def gen_chksum(act_id, ts, auth, part, buildkey):
 
 #def solve():
 
-# Sign in to ZyBooks
-response = signin(cfg.USR, cfg.PWD)
-auth = response["session"]["auth_token"]
-usr_id = response["session"]["user_id"]
+def main():
+    # Sign in to ZyBooks
+    response = signin(cfg.USR, cfg.PWD)
+    auth = response["session"]["auth_token"]
+    usr_id = response["session"]["user_id"]
 
-# Get all books and have user select one
-books = get_books(auth, usr_id)
-i = 1
-for book in books:
-    print(str(i) + ". " + book["title"])
-    i += 1
-book = books[int(input("Select a Zybook: "))-1]
+    # Get all books and have user select one
+    books = get_books(auth, usr_id)
+    i = 1
+    for book in books:
+        print(str(i) + ". " + book["title"])
+        i += 1
+    book = books[int(input("Select a Zybook: "))-1]
 
-# Get all chapters in selected book and have user select one
-code = book["zybook_code"]
-chapters = get_chapters(code, auth)
-for chapter in chapters:
-    print(str(chapter["number"]) + ". " + chapter["title"])
-chapter = chapters[int(input("Select a chapter: "))-1]
+    # Get all chapters in selected book and have user select one
+    code = book["zybook_code"]
+    chapters = get_chapters(code, auth)
+    for chapter in chapters:
+        print(str(chapter["number"]) + ". " + chapter["title"])
+    chapter = chapters[int(input("Select a chapter: "))-1]
 
-# Get all sections in selected chapter and have user select one
-sections = chapter["sections"]
-for section in sections:
-    print(str(section["canonical_section_number"]) + ". " + section["title"])
-section = sections[int(input("Select a section: "))-1]
+    # Get all sections in selected chapter and have user select one
+    sections = chapter["sections"]
+    for section in sections:
+        print(str(section["canonical_section_number"]) + ". " + section["title"])
+    section = sections[int(input("Select a section: "))-1]
 
-# Solves all problems in given section
-problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
-#for problem in problems:
-#    if problem["parts"] > 0:
-#        solve()
+    # Solves all problems in given section
+    problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
+    #for problem in problems:
+    #    if problem["parts"] > 0:
+    #        solve()
+
+if __name__ == "__main__":
+    main()
