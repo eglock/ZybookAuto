@@ -33,14 +33,14 @@ def get_chapters(code, auth):
 
 # Returns all problems in a section
 def get_problems(code, chapter, section, auth):
-    problems = requests.get("https://zyserver.zybooks.com/v1/zybook/{}/chapter/{}/section/{}?auth_token={}".format(code, chapter, section, auth))
-    return problems["section"]["content-resources"]
+    problems = requests.get("https://zyserver.zybooks.com/v1/zybook/{}/chapter/{}/section/{}?auth_token={}".format(code, chapter, section, auth)).json()
+    return problems["section"]["content_resources"]
 
 # Gets current buildkey, used when generating md5 checksum
 def get_buildkey():
     site = requests.get("https://learn.zybooks.com")
-    soup = BeautifulSoup(BeautifulSoup.html_doc, "html.parser")
-    buildkey = soup.find(name="zybooks-web/config/environment")["content"]
+    soup = BeautifulSoup(site.text, "html.parser")
+    buildkey = soup.find(attrs={"name":"zybooks-web/config/environment"})["content"]
     buildkey = json.loads(urllib.parse.unquote(buildkey))['APP']['BUILDKEY']
     return buildkey
 
@@ -50,17 +50,38 @@ def gen_timestamp():
     return ts
 
 # Generates md5 hash
-def gen_chksum(act_id, ts, auth, part, buildkey):
+def gen_chksum(act_id, ts, auth, part):
     md5 = hashlib.md5()
     md5.update("content_resource/{}/activity".format(act_id).encode("utf-8"))
     md5.update(ts.encode("utf-8"))
     md5.update(auth.encode("utf-8"))
-    md5.update(act_id.encode("utf-8"))
-    md5.update(part.encode("utf-8"))
+    md5.update(str(act_id).encode("utf-8"))
+    md5.update(str(part).encode("utf-8"))
     md5.update("true".encode("utf-8"))
-    md5.update(buildkey.encode("utf-8"))
+    md5.update(get_buildkey().encode("utf-8"))
+    return md5.hexdigest()
 
-#def solve():
+def solve(act_id, auth, part, code):
+    url = "https://zyserver.zybooks.com/v1/content_resource/{}/activity".format(act_id)
+    head = {
+        "Host": "zyserver.zybooks.com",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:97.0) Gecko/20100101 Firefox/97.0",
+        "Accept": "application/json, text/javascript, */*; q=0.01",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Content-Type": "application/json",
+        "Origin": "https://learn.zybooks.com",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Referer": "https://learn.zybooks.com/",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site"
+    }
+    ts = gen_timestamp()
+    chksm = gen_chksum(act_id, ts, auth, part)
+    meta = {"isTrusted":True,"computerTime":ts}
+    return requests.post(url, json={"part": part,"complete": True,"metadata":"{}","zybook_code":code,"auth_token":auth,"timestamp":ts,"__cs__":chksm}, headers=head).json()
 
 def main():
     # Sign in to ZyBooks
@@ -91,9 +112,14 @@ def main():
 
     # Solves all problems in given section
     problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
-    #for problem in problems:
-    #    if problem["parts"] > 0:
-    #        solve()
+    for problem in problems:
+        act_id = problem["id"]
+        parts = problem["parts"]
+        if parts > 0:
+            for part in range(parts):
+                print(solve(act_id, auth, part, code))
+        else:
+            print(solve(act_id, auth, 0, code))
 
 if __name__ == "__main__":
     main()
