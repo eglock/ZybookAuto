@@ -2,9 +2,9 @@ import json
 import requests
 import hashlib
 import urllib.parse
-from bs4 import BeautifulSoup
-from datetime import datetime
 import random
+from datetime import datetime
+from bs4 import BeautifulSoup
 
 import cfg
 
