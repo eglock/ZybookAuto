@@ -113,87 +113,102 @@ def main():
     auth = response["session"]["auth_token"]
     usr_id = response["session"]["user_id"]
     t_spfd = 0 # Keeps track of total "time_spent" sent to server
-
-    while True:
-        # Get all books and have user select one
-        books = get_books(auth, usr_id)
-        i = 1
-        for book in books:
-            print(str(i) + ". " + book["title"])
-            i += 1
-        print(str(i) + ". " + "[BATCH]")
-        print(str(i+1) + ". " + "[EXIT]")
-        selection = input("Select a Zybook: ")
-        try:
-            selection = int(selection)
-        except:
-            print("Please enter a number")
-            continue
-        if selection == i:
-            sys.exit(0) # Batch processing will go here
-        elif selection == i + 1:
-            sys.exit(0)
-        elif selection > i + 1:
-            print("Invalid selection")
-            continue
-        book = books[int(selection)-1]
-
-        # Get all chapters in selected book and have user select one
-        code = book["zybook_code"]
-        chapters = get_chapters(code, auth)
-        for chapter in chapters:
-            print(str(chapter["number"]) + ". " + chapter["title"])
-        print(str(chapters[-1]["number"]+1) + ". " + "[EXIT]")
-        selection = input("Select a chapter: ")
-        try:
-            selection = int(selection)
-        except:
-            print("Please enter a number")
-            continue
-        if selection > chapters[-1]["number"] + 1:
-            print("Invalid selection")
-            continue
-        elif selection == chapters[-1]["number"] + 1:
-            sys.exit(0)
-        chapter = chapters[selection-1]
-
-        # Get all sections in selected chapter and have user select one
-        sections = chapter["sections"]
-        for section in sections:
-            print(str(section["canonical_section_number"]) + ". " + section["title"])
-        print(str(sections[-1]["number"]+1) + ". " + "[EXIT]")
-        selection = input("Select a section: ")
-        try:
-            selection = int(selection)
-        except:
-            print("Please enter a number")
-            continue
-        if selection > sections[-1]["number"] + 1:
-            print("Invalid selection")
-            continue
-        elif selection == sections[-1]["number"] + 1:
-            sys.exit(0)
-        section = sections[selection-1]
-
-        # Solves all problems in given section
-        sec_id = section["canonical_section_id"]
-        problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
-        p = 1
-        for problem in problems:
-            act_id = problem["id"]
-            parts = problem["parts"]
-            if parts > 0:
-                for part in range(parts):
-                    if solve(act_id, sec_id, auth, part, code):
-                        print("Solved part {} of problem {}".format(part+1, p))
+    for attempt in range(3): # Try to reauthenticate three times before giving up
+        while True:
+            try:
+                # Get all books and have user select one
+                books = get_books(auth, usr_id)
+                i = 1
+                for book in books:
+                    print(str(i) + ". " + book["title"])
+                    i += 1
+                print(str(i) + ". " + "[BATCH]")
+                print(str(i+1) + ". " + "[EXIT]")
+                while True:
+                    selection = input("Select a Zybook: ")
+                    try:
+                        selection = int(selection)
+                    except:
+                        print("Please enter a number")
+                        continue
+                    if selection == i:
+                        sys.exit(0) # Batch processing will go here
+                    elif selection == i + 1:
+                        sys.exit(0)
+                    elif selection > i + 1 or selection < 1:
+                        print("Invalid selection")
+                        continue
                     else:
-                        print("Failed to solve part {} of problem {}".format(part+1, p))
-            else:
-                if solve(act_id, sec_id, auth, 0, code):
-                    print("Solved problem {}".format(p))
-                else:
-                    print("Failed to solve problem {}".format(p))
-            p += 1
+                        break
+                book = books[int(selection)-1]
+                # Get all chapters in selected book and have user select one
+                code = book["zybook_code"]
+                chapters = get_chapters(code, auth)
+                for chapter in chapters:
+                    print(str(chapter["number"]) + ". " + chapter["title"])
+                print(str(chapters[-1]["number"]+1) + ". " + "[EXIT]")
+                while True:
+                    selection = input("Select a chapter: ")
+                    try:
+                        selection = int(selection)
+                    except:
+                        print("Please enter a number")
+                        continue
+                    if selection > chapters[-1]["number"] + 1 or selection < 1:
+                        print("Invalid selection")
+                        continue
+                    elif selection == chapters[-1]["number"] + 1:
+                        sys.exit(0)
+                    else:
+                        break
+                chapter = chapters[selection-1]
+
+                # Get all sections in selected chapter and have user select one
+                sections = chapter["sections"]
+                for section in sections:
+                    print(str(section["canonical_section_number"]) + ". " + section["title"])
+                print(str(sections[-1]["number"]+1) + ". " + "[EXIT]")
+                while True:
+                    selection = input("Select a section: ")
+                    try:
+                        selection = int(selection)
+                    except:
+                        print("Please enter a number")
+                        continue
+                    if selection > sections[-1]["number"] + 1 or selection < 1:
+                        print("Invalid selection")
+                        continue
+                    elif selection == sections[-1]["number"] + 1:
+                        sys.exit(0)
+                    else:
+                        break
+                section = sections[selection-1]
+
+                # Solves all problems in given section
+                sec_id = section["canonical_section_id"]
+                problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
+                p = 1
+                for problem in problems:
+                    act_id = problem["id"]
+                    parts = problem["parts"]
+                    if parts > 0:
+                        for part in range(parts):
+                            if solve(act_id, sec_id, auth, part, code):
+                                print("Solved part {} of problem {}".format(part+1, p))
+                            else:
+                                print("Failed to solve part {} of problem {}".format(part+1, p))
+                    else:
+                        if solve(act_id, sec_id, auth, 0, code):
+                            print("Solved problem {}".format(p))
+                        else:
+                            print("Failed to solve problem {}".format(p))
+                    p += 1
+            except Exception as e: # If an error occurs, try reauthenticating
+                print("Ran into an error:\n" + str(e) +"\nAttempting to reauthenticate...")
+                response = signin(cfg.USR, cfg.PWD)
+                auth = response["session"]["auth_token"]
+                usr_id = response["session"]["user_id"]
+                break
 
 if __name__ == "__main__":
     main()
