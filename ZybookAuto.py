@@ -36,6 +36,13 @@ def get_problems(code, chapter, section, auth):
     problems = requests.get("https://zyserver.zybooks.com/v1/zybook/{}/chapter/{}/section/{}?auth_token={}".format(code, chapter, section, auth)).json()
     return problems["section"]["content_resources"]
 
+# Spoofs "time_spent" anywhere from 1 to 60 seconds.
+def spend_time(auth, sec_id, act_id, part, code):
+    global t_spfd
+    t  = random.randint(1, 60)
+    t_spfd += t
+    return requests.post("https://zyserver2.zybooks.com/v1/zybook/{}/time_spent".format(code), json={"time_spent_records":[{"canonical_section_id":sec_id,"content_resource_id":act_id,"part":part,"time_spent":t,"timestamp":gen_timestamp()}],"auth_token":auth}).json()["success"]
+
 # Gets current buildkey, used when generating md5 checksum
 def get_buildkey():
     site = requests.get("https://learn.zybooks.com")
@@ -44,9 +51,21 @@ def get_buildkey():
     buildkey = json.loads(urllib.parse.unquote(buildkey))['APP']['BUILDKEY']
     return buildkey
 
-# Get current timestamp in correct format
+# Get current timestamp in correct format, with respect to time spent
 def gen_timestamp():
-    ts = datetime.now().strftime("%Y-%m-%dT%H:%M.{}Z").format(str(random.randint(0, 999)).rjust(3, "0"))
+    global t_spfd
+    ct = datetime.now()
+    d = 0
+    h = ct.hour
+    m = ct.minute + (t_spfd // 60)
+    if m > 59:
+        h += m // 60
+        m %= 60
+    if h > 23:
+        d += h // 24
+        h %= 24
+    nt = ct.replace(day=ct.day+d, hour=h, minute=m)
+    ts = nt.strftime("%Y-%m-%dT%H:%M.{}Z").format(str(random.randint(0, 999)).rjust(3, "0"))
     return ts
 
 # Generates md5 hash
@@ -61,7 +80,7 @@ def gen_chksum(act_id, ts, auth, part):
     md5.update(get_buildkey().encode("utf-8"))
     return md5.hexdigest()
 
-def solve(act_id, auth, part, code):
+def solve(act_id, sec_id, auth, part, code):
     url = "https://zyserver.zybooks.com/v1/content_resource/{}/activity".format(act_id)
     head = {
         "Host": "zyserver.zybooks.com",
@@ -78,16 +97,19 @@ def solve(act_id, auth, part, code):
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site"
     }
+    spend_time(auth, sec_id, act_id, part, code)
     ts = gen_timestamp()
     chksm = gen_chksum(act_id, ts, auth, part)
     meta = {"isTrusted":True,"computerTime":ts}
     return requests.post(url, json={"part": part,"complete": True,"metadata":"{}","zybook_code":code,"auth_token":auth,"timestamp":ts,"__cs__":chksm}, headers=head).json()
 
 def main():
+    global t_spfd
     # Sign in to ZyBooks
     response = signin(cfg.USR, cfg.PWD)
     auth = response["session"]["auth_token"]
     usr_id = response["session"]["user_id"]
+    t_spfd = 0 # Keeps track of total "time_spent" sent to server
 
     while True:
         # Get all books and have user select one
@@ -112,6 +134,7 @@ def main():
         section = sections[int(input("Select a section: "))-1]
 
         # Solves all problems in given section
+        sec_id = section["canonical_section_id"]
         problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
         p = 1
         for problem in problems:
@@ -119,12 +142,12 @@ def main():
             parts = problem["parts"]
             if parts > 0:
                 for part in range(parts):
-                    if solve(act_id, auth, part, code):
+                    if solve(act_id, sec_id, auth, part, code):
                         print("Solved part {} of problem {}".format(part+1, p))
                     else:
                         print("Failed to solve part {} of problem {}".format(part+1, p))
             else:
-                if solve(act_id, auth, 0, code):
+                if solve(act_id, sec_id, auth, 0, code):
                     print("Solved problem {}".format(p))
                 else:
                     print("Failed to solve problem {}".format(p))
