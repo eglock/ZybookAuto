@@ -1,4 +1,7 @@
+import sys
 import json
+from select import select
+from tkinter import W
 import requests
 import hashlib
 import urllib.parse
@@ -118,20 +121,59 @@ def main():
         for book in books:
             print(str(i) + ". " + book["title"])
             i += 1
-        book = books[int(input("Select a Zybook: "))-1]
+        print(str(i) + ". " + "[BATCH]")
+        print(str(i+1) + ". " + "[EXIT]")
+        selection = input("Select a Zybook: ")
+        try:
+            selection = int(selection)
+        except:
+            print("Please enter a number")
+            continue
+        if selection == i:
+            sys.exit(0) # Batch processing will go here
+        elif selection == i + 1:
+            sys.exit(0)
+        elif selection > i + 1:
+            print("Invalid selection")
+            continue
+        book = books[int(selection)-1]
 
         # Get all chapters in selected book and have user select one
         code = book["zybook_code"]
         chapters = get_chapters(code, auth)
         for chapter in chapters:
             print(str(chapter["number"]) + ". " + chapter["title"])
-        chapter = chapters[int(input("Select a chapter: "))-1]
+        print(str(chapters[-1]["number"]+1) + ". " + "[EXIT]")
+        selection = input("Select a chapter: ")
+        try:
+            selection = int(selection)
+        except:
+            print("Please enter a number")
+            continue
+        if selection > chapters[-1]["number"] + 1:
+            print("Invalid selection")
+            continue
+        elif selection == chapters[-1]["number"] + 1:
+            sys.exit(0)
+        chapter = chapters[selection-1]
 
         # Get all sections in selected chapter and have user select one
         sections = chapter["sections"]
         for section in sections:
             print(str(section["canonical_section_number"]) + ". " + section["title"])
-        section = sections[int(input("Select a section: "))-1]
+        print(str(sections[-1]["number"]+1) + ". " + "[EXIT]")
+        selection = input("Select a section: ")
+        try:
+            selection = int(selection)
+        except:
+            print("Please enter a number")
+            continue
+        if selection > sections[-1]["number"] + 1:
+            print("Invalid selection")
+            continue
+        elif selection == sections[-1]["number"] + 1:
+            sys.exit(0)
+        section = sections[selection-1]
 
         # Solves all problems in given section
         sec_id = section["canonical_section_id"]
