@@ -1,13 +1,11 @@
 import sys
 import json
-from select import select
-from tkinter import W
 import requests
 import hashlib
 import urllib.parse
 import random
 from datetime import datetime
-from bs4 import BeautifulSoup
+from html.parser import HTMLParser
 
 import cfg
 
@@ -48,11 +46,13 @@ def spend_time(auth, sec_id, act_id, part, code):
 
 # Gets current buildkey, used when generating md5 checksum
 def get_buildkey():
-    site = requests.get("https://learn.zybooks.com")
-    soup = BeautifulSoup(site.text, "html.parser")
-    buildkey = soup.find(attrs={"name":"zybooks-web/config/environment"})["content"]
-    buildkey = json.loads(urllib.parse.unquote(buildkey))['APP']['BUILDKEY']
-    return buildkey
+    class Parser(HTMLParser):
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag == "meta" and attrs[0][1] == "zybooks-web/config/environment":
+                self.data = json.loads(urllib.parse.unquote(attrs[1][1]))['APP']['BUILDKEY']
+    p = Parser()
+    p.feed(requests.get("https://learn.zybooks.com").text)
+    return p.data
 
 # Get current timestamp in correct format, with respect to time spent
 def gen_timestamp():
