@@ -37,11 +37,11 @@ def get_problems(code, chapter, section, auth):
     return problems["section"]["content_resources"]
 
 # Spoofs "time_spent" anywhere from 1 to 60 seconds.
-def spend_time(auth, sec_id, act_id, part):
+def spend_time(auth, sec_id, act_id, part, code):
     global t_spfd
     t  = random.randint(1, 60)
     t_spfd += t
-    return requests.post()
+    return requests.post("https://zyserver2.zybooks.com/v1/zybook/{}/time_spent".format(code), json={"time_spent_records":[{"canonical_section_id":sec_id,"content_resource_id":act_id,"part":part,"time_spent":t,"timestamp":gen_timestamp()}],"auth_token":auth}).json()["success"]
 
 # Gets current buildkey, used when generating md5 checksum
 def get_buildkey():
@@ -54,13 +54,18 @@ def get_buildkey():
 # Get current timestamp in correct format, with respect to time spent
 def gen_timestamp():
     global t_spfd
-    if t_spfd >= 3600:
-        h = t_spfd // 3600
-        m = t_spfd % 60
-    else:
-        h = 0
-        m = t_spfd // 60
-    ts = datetime.now().strftime("%Y-%m-%dT%H:%M.{}Z").format(str(random.randint(0, 999)).rjust(3, "0"))
+    ct = datetime.now()
+    d = 0
+    h = ct.hour
+    m = ct.minute + (t_spfd // 60)
+    if m > 59:
+        h += m // 60
+        m %= 60
+    if h > 23:
+        d += h // 24
+        h %= 24
+    nt = ct.replace(day=ct.day+d, hour=h, minute=m)
+    ts = nt.strftime("%Y-%m-%dT%H:%M.{}Z").format(str(random.randint(0, 999)).rjust(3, "0"))
     return ts
 
 # Generates md5 hash
@@ -92,7 +97,7 @@ def solve(act_id, sec_id, auth, part, code):
         "Sec-Fetch-Mode": "cors",
         "Sec-Fetch-Site": "same-site"
     }
-    spend_time(auth, sec_id, act_id, part)
+    spend_time(auth, sec_id, act_id, part, code)
     ts = gen_timestamp()
     chksm = gen_chksum(act_id, ts, auth, part)
     meta = {"isTrusted":True,"computerTime":ts}
@@ -137,12 +142,12 @@ def main():
             parts = problem["parts"]
             if parts > 0:
                 for part in range(parts):
-                    if solve(act_id, auth, part, code):
+                    if solve(act_id, sec_id, auth, part, code):
                         print("Solved part {} of problem {}".format(part+1, p))
                     else:
                         print("Failed to solve part {} of problem {}".format(part+1, p))
             else:
-                if solve(act_id, auth, 0, code):
+                if solve(act_id, sec_id, auth, 0, code):
                     print("Solved problem {}".format(p))
                 else:
                     print("Failed to solve problem {}".format(p))
