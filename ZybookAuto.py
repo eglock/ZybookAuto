@@ -1,4 +1,4 @@
-import sys
+import sys, os
 import json
 import requests
 import hashlib
@@ -242,7 +242,11 @@ def main():
                 section = sections[selection-1]
                 print("\n")
                 solve_section(section, code, chapter, auth)
-
+            except KeyboardInterrupt:
+                    try:
+                        sys.exit(0)
+                    except SystemExit:
+                        os._exit(0)
             except Exception as e: # If an error occurs, try reauthenticating
                 print("\nRan into an error:\n" + str(e) +"\nAttempting to reauthenticate...\n")
                 response = signin(cfg.USR, cfg.PWD)
