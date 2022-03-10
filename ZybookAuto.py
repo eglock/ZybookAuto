@@ -1,9 +1,12 @@
-import sys, os
+from __future__ import annotations
+import os
+import sys
 import json
 import requests
 import hashlib
-import urllib.parse
 import random
+from typing import Union
+from urllib import parse
 from datetime import datetime
 from html.parser import HTMLParser
 
@@ -47,9 +50,9 @@ def spend_time(auth, sec_id, act_id, part, code):
 # Gets current buildkey, used when generating md5 checksum
 def get_buildkey():
     class Parser(HTMLParser):
-        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, Union[str, None]]]) -> None:
             if tag == "meta" and attrs[0][1] == "zybooks-web/config/environment":
-                self.data = json.loads(urllib.parse.unquote(attrs[1][1]))['APP']['BUILDKEY']
+                self.data = json.loads(parse.unquote(attrs[1][1]))['APP']['BUILDKEY']
     p = Parser()
     p.feed(requests.get("https://learn.zybooks.com").text)
     return p.data
