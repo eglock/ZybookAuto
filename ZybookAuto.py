@@ -197,7 +197,7 @@ def main():
                                 except:
                                     print("Invalid selection")
                                     break
-                                if x[1] > chapters[x[0]-1]["sections"][-1]["canonical_section_number"] or x[0] < 1 or x[1] < 1:
+                                if x[0] > chapters[x[0]-1]["sections"][-1]["canonical_section_number"] or x[0] < 1 or x[1] < 1:
                                     print(str(x[1]) + " is not a section in chapter " + str(x[0]))
                                     break
                                 chapter = chapters[x[0]-1]
