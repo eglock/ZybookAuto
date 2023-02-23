@@ -112,8 +112,20 @@ def solve_part(act_id, sec_id, auth, part, code):
 
 # Solves all problems in given section
 def solve_section(section, code, chapter, auth):
+    sec_name = str(chapter["number"]) + "." + str(section["number"])
+    print("Starting section", sec_name)
     sec_id = section["canonical_section_id"]
-    problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
+    try:
+        problems = get_problems(code, chapter["number"], section["number"], auth)
+    except KeyError as e:
+        print("Failed solving", sec_name)
+        print(str(e), "is missing, retrying with canonical section number...")
+        try:
+            problems = get_problems(code, chapter["number"], section["canonical_section_number"], auth)
+            pass
+        except KeyError:
+            print("Failed solving", str(chapter["number"]) + "." + str(section["canonical_section_number"]))
+            return
     p = 1
     for problem in problems:
         act_id = problem["id"]
