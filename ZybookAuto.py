@@ -71,7 +71,8 @@ def gen_timestamp():
         d += h // 24
         h %= 24
     nt = ct.replace(day=ct.day+d, hour=h, minute=m)
-    ts = nt.strftime(f"%Y-%m-%dT%H:%M.{{}}Z").format(str(random.randint(0, 999)).rjust(3, "0"))
+    ms = str(random.randint(0, 999)).rjust(3, "0")
+    ts = nt.strftime(f"%Y-%m-%dT%H:%M.{ms}Z")
     return ts
 
 # Generates md5 hash
