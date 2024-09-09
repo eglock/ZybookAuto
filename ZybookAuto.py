@@ -228,7 +228,12 @@ def main():
                 print("\n")
                 for section in sections:
                     print(f'{section["canonical_section_number"]}. {section["title"]}')
-                print(f'{sections[-1]["number"]+1}. [EXIT]')
+                   
+                whole = sections[-1]["number"]+1
+                 
+                print(f'{sections[-1]["number"]+1}. [Solve Till Given Section(Inclusive)]')               
+                print(f'{sections[-1]["number"]+2}. [EXIT]')
+                
                 while True:
                     selection = input("\nSelect a section: ")
                     try:
@@ -236,16 +241,44 @@ def main():
                     except:
                         print("Please enter a number")
                         continue
-                    if selection > sections[-1]["number"] + 1 or selection < 1:
+                    if selection > sections[-1]["number"] + 2 or selection < 1:
                         print("Invalid selection")
                         continue
-                    elif selection == sections[-1]["number"] + 1:
+                    elif selection == sections[-1]["number"] + 2:
                         sys.exit(0)
                     else:
                         break
-                section = sections[selection-1]
-                print("\n")
-                solve_section(section, code, chapter, auth)
+                
+                if selection == whole:
+
+                    while True:
+                        count = input("\nInput Section to Solve to(Inclusive): ")
+                        try:
+                            count = int(count)
+                        except:
+                            print("Please enter a number")
+                            continue
+                        if count > sections[-1]["number"] + 1 or count < 1:
+                            print("Input out of bounds")
+                            continue
+                        else:
+                            break
+                    
+                    num = 1
+                    for section in sections:
+                        if num > count:
+                            print("\nAll choosen sections solved. Exiting\n")
+                            break
+                        
+                        solve_section(section, code, chapter, auth)
+                        num += 1
+                else:
+                    print("\n")
+                    section = sections[selection-1]
+                    solve_section(section, code, chapter, auth)
+                    
+                    
+                
             except KeyboardInterrupt:
                     try:
                         sys.exit(0)
@@ -254,9 +287,12 @@ def main():
             except Exception as e: # If an error occurs, try reauthenticating
                 print(f"\nRan into an error:\n{e}\nAttempting to reauthenticate...\n")
                 response = signin(cfg.USR, cfg.PWD)
+                
                 auth = response["session"]["auth_token"]
                 usr_id = response["session"]["user_id"]
                 break
 
 if __name__ == "__main__":
     main()
+    
+ 
